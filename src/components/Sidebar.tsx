@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Code2, Building2, CalendarDays, BrainCircuit, BarChart3, FileText, Target, Settings } from 'lucide-react';
+import { LayoutDashboard, Code2, Building2, CalendarDays, BrainCircuit, BarChart3, FileText, Target, BookOpen } from 'lucide-react';
 
 interface SidebarProps {
   active: string;
@@ -8,6 +8,7 @@ interface SidebarProps {
 
 const navItems = [
   { id: 'dashboard', label: 'Mission Control', icon: LayoutDashboard },
+  { id: 'daily', label: 'Daily Log', icon: BookOpen },
   { id: 'departments', label: 'Departments', icon: Code2 },
   { id: 'timeline', label: 'Timeline', icon: CalendarDays },
   { id: 'companies', label: 'Companies', icon: Building2 },

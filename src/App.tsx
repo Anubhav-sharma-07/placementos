@@ -7,12 +7,14 @@ import Companies from './components/Companies';
 import AICoach from './components/AICoach';
 import Analytics from './components/Analytics';
 import { ResumeLab, Goals } from './components/ResumeAndGoals';
+import DailyTracker from './components/DailyTracker';
 
-type Page = 'dashboard' | 'departments' | 'timeline' | 'companies' | 'ai' | 'analytics' | 'resume' | 'goals';
+type Page = 'dashboard' | 'daily' |'departments' | 'timeline' | 'companies' | 'ai' | 'analytics' | 'resume' | 'goals';
 
 function PageContent({ page }: { page: Page }) {
   switch (page) {
     case 'dashboard': return <Dashboard />;
+    case 'daily': return <DailyTracker />;
     case 'departments': return <Departments />;
     case 'timeline': return <Timeline />;
     case 'companies': return <Companies />;

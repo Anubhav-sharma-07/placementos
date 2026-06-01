@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid } from 'recharts';
-import { Zap, Target, Clock, Flame, TrendingUp, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
-import { departments, todayTasks, weeklyData, getReadiness, getOverallScore, DailyTask } from '../data';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { Zap, AlertCircle } from 'lucide-react';
+import { departments, getReadiness, getOverallScore } from '../data';
+import { getTodayLog, saveDailyLog, getWeeklyLogs, getDayNumber, getStartDate } from '../storage';
 import { StatCard, ProgressBar, SectionHeader, Card, ScoreRing, Tag } from './UI';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -19,40 +20,63 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Dashboard() {
-  const [tasks, setTasks] = useState<DailyTask[]>(todayTasks);
   const [animScore, setAnimScore] = useState(0);
+  const [todayLog, setTodayLog] = useState(getTodayLog());
+  const [saved, setSaved] = useState(false);
+
   const score = getOverallScore(departments);
-  const daysLeft = 127;
+  const dayNumber = getDayNumber();
+  const startDate = getStartDate();
+
+  const today = new Date();
+  const placementDate = new Date('2026-08-01');
+  const daysLeft = Math.ceil((placementDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const todayLabel = today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const weeklyLogs = getWeeklyLogs();
+  const weeklyData = weeklyLogs.map(l => ({
+    day: new Date(l.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short' }),
+    hours: l.studyHours,
+    problems: l.problemsSolved,
+  }));
+
+  const totalProblems = weeklyLogs.reduce((s, l) => s + l.problemsSolved, 0);
+  const totalHours = weeklyLogs.reduce((s, l) => s + l.studyHours, 0);
+  const activeDays = weeklyLogs.filter(l => l.studyHours > 0).length;
+
+  const weakDepts = [...departments].sort((a, b) => getReadiness(a) - getReadiness(b)).slice(0, 3);
 
   useEffect(() => {
     const t = setTimeout(() => setAnimScore(score), 300);
     return () => clearTimeout(t);
   }, [score]);
 
-  const toggleTask = (id: string) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const updateLog = (field: string, value: number) => {
+    setTodayLog(prev => ({ ...prev, [field]: value }));
   };
 
-  const completedTasks = tasks.filter(t => t.done).length;
-  const totalMinutes = tasks.reduce((s, t) => s + t.duration, 0);
-  const doneMinutes = tasks.filter(t => t.done).reduce((s, t) => s + t.duration, 0);
-
-  const topDepts = [...departments].sort((a, b) => getReadiness(b) - getReadiness(a)).slice(0, 5);
-  const weakDepts = [...departments].sort((a, b) => getReadiness(a) - getReadiness(b)).slice(0, 3);
+  const handleSave = () => {
+    saveDailyLog(todayLog);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
+
       {/* Header */}
       <div className="fade-in" style={{ marginBottom: 28 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
           <div className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Live · Placement Season in {daysLeft} days</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            Day {dayNumber} · Placement Season in {daysLeft} days
+          </span>
         </div>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 4 }}>
           Mission Control
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-          Sunday, May 31 2026 · B.Tech CSE, BVCOE · Graduating 2027
+          {todayLabel} · B.Tech CSE, BVCOE · Graduating 2027
         </p>
       </div>
 
@@ -61,30 +85,62 @@ export default function Dashboard() {
         <Card style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 16px' }}>
           <ScoreRing score={animScore} size={90} color="var(--accent)" />
           <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 10, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Placement Score</div>
-          <div style={{ fontSize: 10, color: 'var(--green)', marginTop: 4 }}>↑ +4% this week</div>
+          <div style={{ fontSize: 10, color: 'var(--green)', marginTop: 4 }}>
+            Started {new Date(startDate + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+          </div>
         </Card>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-          <StatCard label="DSA Problems" value="184" sub="Easy 82 · Med 84 · Hard 18" accent="var(--accent)" trend="up" trendLabel="+12 this week" delay={60} />
-          <StatCard label="Study Streak" value="14" sub="days consecutive" accent="var(--coral)" trend="up" trendLabel="Personal best" delay={120} />
-          <StatCard label="Projects Live" value="3" sub="SpendLens · Aria · XAI" accent="var(--green)" trend="neutral" trendLabel="Lala AI in dev" delay={180} />
+          <StatCard
+            label="Problems This Week"
+            value={totalProblems}
+            sub={`${totalHours.toFixed(1)}h studied`}
+            accent="var(--accent)"
+            trend="up"
+            trendLabel="Keep going!"
+            delay={60}
+          />
+          <StatCard
+            label="Active Days"
+            value={`${activeDays}/7`}
+            sub="this week"
+            accent="var(--coral)"
+            trend={activeDays >= 5 ? 'up' : 'neutral'}
+            trendLabel={activeDays >= 5 ? 'On fire!' : 'Stay consistent'}
+            delay={120}
+          />
+          <StatCard
+            label="Journey Day"
+            value={dayNumber}
+            sub={`since ${new Date(startDate + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+            accent="var(--green)"
+            trend="up"
+            trendLabel="Keep the streak!"
+            delay={180}
+          />
         </div>
       </div>
 
-      {/* 2-col layout */}
+      {/* Weekly chart + Today quick log */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, marginBottom: 24 }}>
-        {/* Weekly Activity */}
         <Card>
-          <SectionHeader title="This Week" sub="Study hours & problems solved" accent="var(--accent)" />
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={weeklyData} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={28} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="hours" fill="#63b3ed" radius={[4, 4, 0, 0]} name="hours" />
-              <Bar dataKey="problems" fill="#a78bfa" radius={[4, 4, 0, 0]} name="problems" />
-            </BarChart>
-          </ResponsiveContainer>
+          <SectionHeader title="This Week" sub="Your real study hours & problems solved" accent="var(--accent)" />
+          {totalHours === 0 && totalProblems === 0 ? (
+            <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No data yet — log today's progress!</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Chart fills up as you log each day</div>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={weeklyData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={28} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="hours" fill="#63b3ed" radius={[4, 4, 0, 0]} name="hours" />
+                <Bar dataKey="problems" fill="#a78bfa" radius={[4, 4, 0, 0]} name="problems" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
           <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }}>
               <div style={{ width: 8, height: 8, borderRadius: 2, background: '#63b3ed' }} /> Study Hours
@@ -95,54 +151,45 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        {/* Today's Tasks */}
         <Card>
-          <SectionHeader
-            title="Today's Mission"
-            accent="var(--green)"
-            action={
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                {completedTasks}/{tasks.length} done · {doneMinutes}m
-              </div>
-            }
-          />
-          <div style={{ marginBottom: 10 }}>
-            <ProgressBar value={completedTasks} max={tasks.length} color="var(--green)" height={3} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {tasks.map(task => (
-              <button
-                key={task.id}
-                onClick={() => toggleTask(task.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
-                  borderRadius: 'var(--radius-md)',
-                  background: task.done ? 'var(--bg-elevated)' : 'transparent',
-                  border: `1px solid ${task.done ? 'var(--border)' : 'var(--border)'}`,
-                  cursor: 'pointer', textAlign: 'left', width: '100%',
-                  opacity: task.done ? 0.55 : 1,
-                  transition: 'all 0.15s',
-                }}
-              >
-                {task.done
-                  ? <CheckCircle2 size={14} color="var(--green)" />
-                  : <Circle size={14} color="var(--text-muted)" />}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: task.done ? 'line-through' : 'none' }}>
-                    {task.title}
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{task.dept} · {task.duration}m</div>
+          <SectionHeader title="Log Today" accent="var(--green)" action={
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Day {dayNumber}</div>
+          } />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
+            {[
+              { label: 'Study Hours', field: 'studyHours', step: 0.5, max: 16, color: '#63b3ed' },
+              { label: 'Problems Solved', field: 'problemsSolved', step: 1, max: 50, color: '#a78bfa' },
+              { label: 'Tasks Completed', field: 'tasksCompleted', step: 1, max: 20, color: '#4ade80' },
+            ].map(item => (
+              <div key={item.field} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)', minWidth: 110 }}>{item.label}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    onClick={() => updateLog(item.field, Math.max(0, Number((todayLog as any)[item.field]) - item.step))}
+                    style={{ width: 26, height: 26, borderRadius: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 16, cursor: 'pointer' }}>−
+                  </button>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 700, color: item.color, minWidth: 32, textAlign: 'center' }}>
+                    {(todayLog as any)[item.field]}
+                  </span>
+                  <button
+                    onClick={() => updateLog(item.field, Math.min(item.max, Number((todayLog as any)[item.field]) + item.step))}
+                    style={{ width: 26, height: 26, borderRadius: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 16, cursor: 'pointer' }}>+
+                  </button>
                 </div>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: task.color, flexShrink: 0 }} />
-              </button>
+              </div>
             ))}
           </div>
+          <button
+            onClick={handleSave}
+            style={{ width: '100%', padding: '10px', borderRadius: 10, background: saved ? '#4ade8020' : '#63b3ed20', color: saved ? '#4ade80' : '#63b3ed', border: `1px solid ${saved ? '#4ade8050' : '#63b3ed50'}`, fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-display)', cursor: 'pointer', transition: 'all 0.2s' }}>
+            {saved ? '✓ Saved to your log!' : "Save Today's Progress"}
+          </button>
         </Card>
       </div>
 
       {/* Department Readiness */}
       <Card style={{ marginBottom: 24 }}>
-        <SectionHeader title="Department Readiness" sub="Weighted placement score across all skill areas" accent="var(--purple)" />
+        <SectionHeader title="Department Readiness" sub="Update topic statuses in Departments to see this grow" accent="var(--purple)" />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 40px' }}>
           {departments.map(d => (
             <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -164,12 +211,14 @@ export default function Dashboard() {
             <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>AI Coach Insight</span>
           </div>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 12 }}>
-            Your Frontend score is strong at <strong style={{ color: 'var(--text-primary)' }}>{getReadiness(departments.find(d => d.id === 'frontend')!)}%</strong>. Focus on <strong style={{ color: 'var(--amber)' }}>Graphs + DP</strong> this week to unlock 3 more eligible companies. At current velocity, you'll hit 80% overall by July 2026.
+            You are on <strong style={{ color: 'var(--text-primary)' }}>Day {dayNumber}</strong> of your placement journey.
+            Log your daily progress consistently — even 30 minutes a day compounds into massive results by August.
+            Focus on your weakest departments first.
           </p>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <Tag label="68% SWE Intern probability" color="var(--green)" />
-            <Tag label="₹6–14 LPA expected" color="var(--accent)" />
-            <Tag label="41% AI/ML probability" color="var(--amber)" />
+            <Tag label={`Day ${dayNumber} of journey`} color="var(--green)" />
+            <Tag label={`${daysLeft} days to season`} color="var(--accent)" />
+            <Tag label="Start strong today" color="var(--amber)" />
           </div>
         </Card>
 
