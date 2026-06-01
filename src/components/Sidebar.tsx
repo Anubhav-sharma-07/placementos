@@ -1,9 +1,13 @@
 import React from 'react';
 import { LayoutDashboard, Code2, Building2, CalendarDays, BrainCircuit, BarChart3, FileText, Target, BookOpen } from 'lucide-react';
 
+import { Session } from '@supabase/supabase-js';
+import { supabase } from '../supabase';
+
 interface SidebarProps {
   active: string;
   onNav: (page: string) => void;
+  session: Session | null;
 }
 
 const navItems = [
@@ -18,7 +22,7 @@ const navItems = [
   { id: 'goals', label: 'Goals', icon: Target },
 ];
 
-export default function Sidebar({ active, onNav }: SidebarProps) {
+export default function Sidebar({ active, onNav, session }: SidebarProps) {
   return (
     <aside style={{
       width: 220,
@@ -102,22 +106,38 @@ export default function Sidebar({ active, onNav }: SidebarProps) {
       </nav>
 
       {/* User */}
-      <div style={{ padding: '12px 10px', borderTop: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 'var(--radius-md)', background: 'var(--bg-elevated)' }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #63b3ed40, #a78bfa40)',
-            border: '1px solid var(--border-accent)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 600, color: 'var(--accent)',
-            fontFamily: 'var(--font-display)',
-          }}>A</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Anubhav</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>CSE · Pre-final year</div>
-          </div>
-        </div>
+<div style={{ padding: '12px 10px', borderTop: '1px solid var(--border)' }}>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 'var(--radius-md)', background: 'var(--bg-elevated)', marginBottom: 6 }}>
+    <div style={{
+      width: 28, height: 28, borderRadius: '50%',
+      background: 'linear-gradient(135deg, #63b3ed40, #a78bfa40)',
+      border: '1px solid var(--border-accent)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 11, fontWeight: 600, color: 'var(--accent)',
+      fontFamily: 'var(--font-display)',
+    }}>
+      {session?.user?.email?.[0]?.toUpperCase() || 'A'}
+    </div>
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {session?.user?.email?.split('@')[0] || 'Anubhav'}
       </div>
+      <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>CSE · Pre-final year</div>
+    </div>
+  </div>
+  <button
+    onClick={() => supabase.auth.signOut()}
+    style={{
+      width: '100%', padding: '6px', borderRadius: 8,
+      background: 'transparent', border: '1px solid var(--border)',
+      color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer',
+      fontFamily: 'var(--font-mono)', transition: 'all 0.15s',
+    }}
+  >
+    Sign out
+  </button>
+</div>
+      
     </aside>
   );
 }
